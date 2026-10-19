@@ -1,13 +1,31 @@
 /* ============================================================
-   1) ÜRÜN VERİ TABANI (JSON)
+   1) ÜRÜN VERİ TABANI (Fotoğraftaki gerçek ürünler)
    ============================================================ */
 const PRODUCTS = [
-  { barcode: "8690504010011", name: "Tam Buğday Unu", brand: "Sinangil", category: "Gıda", price: 42.50, quantity: "2 kg" },
-  { barcode: "8690504010028", name: "Ayçiçek Yağı", brand: "Yudum", category: "Gıda", price: 89.90, quantity: "1 L" },
-  { barcode: "8690504010035", name: "Bulaşık Deterjanı", brand: "Fairy", category: "Temizlik", price: 64.75, quantity: "650 ml" },
-  { barcode: "8690504010042", name: "Diş Macunu", brand: "Colgate", category: "Kozmetik", price: 38.25, quantity: "75 ml" },
-  { barcode: "8690504010059", name: "Süt", brand: "Pınar", category: "Gıda", price: 27.90, quantity: "1 L" },
-  { barcode: "8690504010066", name: "Şampuan", brand: "Head & Shoulders", category: "Kozmetik", price: 95.00, quantity: "400 ml" }
+  { 
+    barcode: "8690632041827", 
+    name: "Toz Kahve", 
+    brand: "Nescafe", 
+    category: "Gıda", 
+    price: 15.00, 
+    quantity: "10 gram" 
+  },
+  { 
+    barcode: "4015000090900", 
+    name: "Stick Yapıştırıcı", 
+    brand: "Pritt", 
+    category: "Kırtasiye", 
+    price: 80.00, 
+    quantity: "43 gram" 
+  },
+  { 
+    barcode: "8690857011964", 
+    name: "10 Numara Zımba Teli", 
+    brand: "3A", 
+    category: "Kırtasiye", 
+    price: 35.00, 
+    quantity: "1000 adet" 
+  }
 ];
 
 /* ============================================================
