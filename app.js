@@ -1,29 +1,44 @@
 /* ============================================================
-   1) ÜRÜN VERİ TABANI (urunler.json dosyasından okunacak)
+   1) ÜRÜN VERİ TABANI (Hocanın Tahtadaki Güncel Listesi)
    ============================================================ */
-let PRODUCTS = []; // Başlangıçta boş, JSON'dan dolacak
-
-// Ürünleri JSON dosyasından yükle
-async function loadProducts() {
-  try {
-    const response = await fetch('./urunler.json');
-    if (!response.ok) throw new Error("JSON dosyası yüklenemedi.");
-    PRODUCTS = await response.json();
-    console.log("Ürünler başarıyla yüklendi:", PRODUCTS);
-  } catch (error) {
-    console.error("JSON Yükleme Hatası:", error);
-    showMessage('Ürün listesi yüklenemedi!', 'error');
+const PRODUCTS = [
+  { 
+    barcode: "8690632041827", 
+    name: "Toz Kahve", 
+    brand: "Nescafe", 
+    category: "Gıda", 
+    price: 15.00, 
+    quantity: "10 gram" 
+  },
+  { 
+    barcode: "4015000090940", 
+    name: "Stick Yapıştırıcı", 
+    brand: "Pritt", 
+    category: "Kırtasiye", 
+    price: 80.00, 
+    quantity: "43 gram" 
+  },
+  { 
+    barcode: "8690857011964", 
+    name: "10 Numara Zımba Teli", 
+    brand: "3A", 
+    category: "Kırtasiye", 
+    price: 35.00, 
+    quantity: "1000 adet" 
   }
-}
-
-// Uygulama açılır açılmaz ürünleri yükle
-loadProducts();
+];
 
 /* ============================================================
-   2) YARDIMCILAR
+   2) YARDIMCILAR VE ARAMA MANTIĞI
    ============================================================ */
 const $ = (id) => document.getElementById(id);
-const findProduct = (code) => PRODUCTS.find(p => String(p.barcode) === String(code).trim());
+
+// ESNEK ARAMA: Barkodun bir kısmı eşleşse bile ürünü bulur (Hatalı girişleri tolere eder)
+const findProduct = (code) => {
+  const cleanCode = String(code).trim();
+  return PRODUCTS.find(p => p.barcode.includes(cleanCode) || cleanCode.includes(p.barcode));
+};
+
 const formatPrice = (n) => n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
 
 function showMessage(text, type = 'info') {
@@ -34,7 +49,6 @@ function showMessage(text, type = 'info') {
   showMessage._t = setTimeout(() => { el.className = 'message'; }, 3000);
 }
 
-/* Aynı barkodun 1.5 sn içinde tekrar işlenmesini engelle */
 const lastScan = { code: null, time: 0 };
 const SCAN_COOLDOWN = 1500;
 function shouldProcess(code) {
@@ -69,7 +83,7 @@ function loadCart() {
 }
 
 /* ============================================================
-   5) KAMERA + BARKOD
+   5) KAMERA + BARKOD OKUMA
    ============================================================ */
 async function startCamera() {
   if (running) return;
@@ -119,7 +133,6 @@ async function startCamera() {
   }
 }
 
-/* 120 ms aralıklı tarama — pil dostu */
 function scheduleScan() {
   if (!running) return;
   scanTimer = setTimeout(async () => {
@@ -217,7 +230,7 @@ function renderCart() {
 }
 
 /* ============================================================
-   7) MOD DEĞİŞTİRME
+   7) MOD DEĞİŞTİRME VE OLAYLAR
    ============================================================ */
 function setMode(m) {
   mode = m;
@@ -231,9 +244,6 @@ function setMode(m) {
 $('tabSingle').addEventListener('click', () => setMode('single'));
 $('tabCart').addEventListener('click', () => setMode('cart'));
 
-/* ============================================================
-   8) ELLE GİRİŞ
-   ============================================================ */
 $('btnManual').addEventListener('click', () => {
   const code = $('manualInput').value.trim();
   if (!code) { showMessage('Lütfen barkod girin.', 'error'); return; }
@@ -242,9 +252,6 @@ $('btnManual').addEventListener('click', () => {
 });
 $('manualInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btnManual').click(); });
 
-/* ============================================================
-   9) KONTROLLER
-   ============================================================ */
 $('btnStart').addEventListener('click', startCamera);
 $('btnStop').addEventListener('click', stopCamera);
 $('btnClearCart').addEventListener('click', () => {
@@ -258,14 +265,18 @@ $('btnClearCart').addEventListener('click', () => {
 });
 
 /* ============================================================
-   10) PWA / SW
+   8) PWA / SW KAYDI VE ÖNBELLEK TEMİZLİĞİ
    ============================================================ */
 if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+    for(let registration of registrations) {
+      registration.unregister(); // Eski önbelleği zorla sil
+    } 
+  });
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW:', err));
   });
 }
-window.addEventListener('pagehide', stopCamera);
 
-/* İlk render */
+window.addEventListener('pagehide', stopCamera);
 renderCart();
