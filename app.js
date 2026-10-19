@@ -1,5 +1,5 @@
 /* ============================================================
-   1) ÜRÜN VERİ TABANI (Fotoğraftaki gerçek ürünler)
+   1) ÜRÜN VERİ TABANI (Hocanın Tahtaya Yazdığı Ürünler)
    ============================================================ */
 const PRODUCTS = [
   { 
