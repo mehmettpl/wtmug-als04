@@ -2,38 +2,35 @@
    1) ÜRÜN VERİ TABANI (JSON DOSYASINDAN YÜKLENECEK)
    ============================================================ */
 let PRODUCTS = []; 
-let isLoaded = false; // JSON yüklenene kadar beklemek için
+let isLoaded = false; 
 
-// Ürünleri JSON dosyasından çek
 async function loadProducts() {
   try {
     const response = await fetch('./urunler.json');
     if (!response.ok) throw new Error("JSON dosyası okunamadı.");
     PRODUCTS = await response.json();
     isLoaded = true;
-    console.log("✅ Ürünler urunler.json'dan başarıyla yüklendi:", PRODUCTS);
+    console.log("✅ Ürünler yüklendi:", PRODUCTS);
   } catch (error) {
     console.error("❌ JSON Yükleme Hatası:", error);
-    showMessage('Ürün listesi yüklenemedi! (Dosyayı yerel/çift tıklayarak açıyorsanız JSON okunmaz, sunucu kullanın)', 'error');
+    showMessage('Ürün listesi yüklenemedi! (Sunucu kullanmalısınız)', 'error');
   }
 }
-
-// Hemen başlat
 loadProducts();
 
 /* ============================================================
-   2) YARDIMCILAR VE ARAMA MANTIĞI
+   2) YARDIMCILAR VE ARAMA
    ============================================================ */
 const $ = (id) => document.getElementById(id);
 
-// ESNEK ARAMA: Kod içinde geçiyorsa bulur
 const findProduct = (code) => {
   if (!isLoaded) return null;
-  const cleanCode = String(code).replace(/\D/g, ''); // Sadece rakamları al
+  const cleanCode = String(code).replace(/\D/g, ''); 
   if (!cleanCode) return null;
   
   return PRODUCTS.find(p => {
     const pCode = String(p.barcode).replace(/\D/g, '');
+    // Tam eşleşme veya içinde geçme durumunda bul
     return pCode === cleanCode || pCode.includes(cleanCode) || cleanCode.includes(pCode);
   });
 };
@@ -224,7 +221,7 @@ function renderCart() {
 }
 
 /* ============================================================
-   7) MOD DEĞİŞTİRME
+   7) MOD VE OLAYLAR
    ============================================================ */
 function setMode(m) {
   mode = m;
@@ -237,9 +234,6 @@ function setMode(m) {
 if($('tabSingle')) $('tabSingle').addEventListener('click', () => setMode('single'));
 if($('tabCart')) $('tabCart').addEventListener('click', () => setMode('cart'));
 
-/* ============================================================
-   8) ELLE GİRİŞ
-   ============================================================ */
 if($('btnManual')) {
   $('btnManual').addEventListener('click', () => {
     const code = $('manualInput').value.trim();
@@ -252,9 +246,6 @@ if($('manualInput')) {
   $('manualInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && $('btnManual')) $('btnManual').click(); });
 }
 
-/* ============================================================
-   9) KONTROLLER
-   ============================================================ */
 if($('btnStart')) $('btnStart').addEventListener('click', startCamera);
 if($('btnStop')) $('btnStop').addEventListener('click', stopCamera);
 if($('btnClearCart')) {
@@ -270,7 +261,7 @@ if($('btnClearCart')) {
 }
 
 /* ============================================================
-   10) SERVICE WORKER'I SIFIRLA
+   8) SERVICE WORKER
    ============================================================ */
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(function(registrations) {
