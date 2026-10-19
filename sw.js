@@ -1,17 +1,15 @@
-const CACHE_NAME = 'market-pwa-v4'; // Versiyonu artırdık, eski önbellek silinecek
+const CACHE_NAME = 'market-pwa-v6'; // Versiyonu artırdık (Eski önbellek silinecek)
 
 const PRECACHE_ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
-  './urunler.json', // <-- BU SATIRI EKLEDİK
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];
 
-/* INSTALL */
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -21,7 +19,6 @@ self.addEventListener('install', (event) => {
   );
 });
 
-/* ACTIVATE */
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
@@ -35,7 +32,6 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-/* FETCH: cache-first + network fallback */
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -65,7 +61,6 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-/* Mesajla manuel güncelleme */
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
