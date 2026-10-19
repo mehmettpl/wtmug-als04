@@ -1,52 +1,52 @@
 /* ============================================================
-   1) ÜRÜN VERİ TABANI (Hocanın Tahtadaki Güncel Listesi)
+   1) ÜRÜN VERİ TABANI (JSON DOSYASINDAN YÜKLENECEK)
    ============================================================ */
-const PRODUCTS = [
-  { 
-    barcode: "8690632041827", 
-    name: "Toz Kahve", 
-    brand: "Nescafe", 
-    category: "Gıda", 
-    price: 15.00, 
-    quantity: "10 gram" 
-  },
-  { 
-    barcode: "4015000090940", 
-    name: "Stick Yapıştırıcı", 
-    brand: "Pritt", 
-    category: "Kırtasiye", 
-    price: 80.00, 
-    quantity: "43 gram" 
-  },
-  { 
-    barcode: "8690857011964", 
-    name: "10 Numara Zımba Teli", 
-    brand: "3A", 
-    category: "Kırtasiye", 
-    price: 35.00, 
-    quantity: "1000 adet" 
+let PRODUCTS = []; 
+let isLoaded = false; // JSON yüklenene kadar beklemek için
+
+// Ürünleri JSON dosyasından çek
+async function loadProducts() {
+  try {
+    const response = await fetch('./urunler.json');
+    if (!response.ok) throw new Error("JSON dosyası okunamadı.");
+    PRODUCTS = await response.json();
+    isLoaded = true;
+    console.log("✅ Ürünler urunler.json'dan başarıyla yüklendi:", PRODUCTS);
+  } catch (error) {
+    console.error("❌ JSON Yükleme Hatası:", error);
+    showMessage('Ürün listesi yüklenemedi! (Dosyayı yerel/çift tıklayarak açıyorsanız JSON okunmaz, sunucu kullanın)', 'error');
   }
-];
+}
+
+// Hemen başlat
+loadProducts();
 
 /* ============================================================
    2) YARDIMCILAR VE ARAMA MANTIĞI
    ============================================================ */
 const $ = (id) => document.getElementById(id);
 
-// ESNEK ARAMA: Barkodun bir kısmı eşleşse bile ürünü bulur (Hatalı girişleri tolere eder)
+// ESNEK ARAMA: Kod içinde geçiyorsa bulur
 const findProduct = (code) => {
-  const cleanCode = String(code).trim();
-  return PRODUCTS.find(p => p.barcode.includes(cleanCode) || cleanCode.includes(p.barcode));
+  if (!isLoaded) return null;
+  const cleanCode = String(code).replace(/\D/g, ''); // Sadece rakamları al
+  if (!cleanCode) return null;
+  
+  return PRODUCTS.find(p => {
+    const pCode = String(p.barcode).replace(/\D/g, '');
+    return pCode === cleanCode || pCode.includes(cleanCode) || cleanCode.includes(pCode);
+  });
 };
 
 const formatPrice = (n) => n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
 
 function showMessage(text, type = 'info') {
   const el = $('message');
+  if(!el) { alert(text); return; }
   el.textContent = text;
   el.className = 'message ' + type;
   clearTimeout(showMessage._t);
-  showMessage._t = setTimeout(() => { el.className = 'message'; }, 3000);
+  showMessage._t = setTimeout(() => { el.className = 'message'; }, 4000);
 }
 
 const lastScan = { code: null, time: 0 };
@@ -83,16 +83,14 @@ function loadCart() {
 }
 
 /* ============================================================
-   5) KAMERA + BARKOD OKUMA
+   5) KAMERA + BARKOD
    ============================================================ */
 async function startCamera() {
   if (running) return;
-
   if (!('BarcodeDetector' in window)) {
     showMessage('Bu tarayıcı BarcodeDetector API desteklemiyor. Elle giriş yapın.', 'error');
     return;
   }
-
   try {
     const supported = await BarcodeDetector.getSupportedFormats();
     const wanted = ['ean_13','ean_8','code_128','code_39','upc_a','upc_e','itf'];
@@ -102,34 +100,22 @@ async function startCamera() {
       return;
     }
     detector = new BarcodeDetector({ formats });
-
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false
     });
-
     const video = $('video');
     video.srcObject = stream;
     await video.play();
-    $('camPlaceholder').style.display = 'none';
-
+    if($('camPlaceholder')) $('camPlaceholder').style.display = 'none';
     running = true;
     $('btnStart').disabled = true;
     $('btnStop').disabled = false;
     showMessage('Kamera açıldı. Barkodu çerçeveye hizalayın.', 'info');
-
     scheduleScan();
   } catch (err) {
     console.error(err);
-    const map = {
-      NotAllowedError: 'Kamera izni reddedildi. Elle barkod girerek devam edebilirsiniz.',
-      PermissionDeniedError: 'Kamera izni reddedildi.',
-      NotFoundError: 'Cihazda kamera bulunamadı.',
-      NotReadableError: 'Kamera başka bir uygulama tarafından kullanılıyor.',
-      OverconstrainedError: 'Kamera istenen çözünürlüğü desteklemiyor.',
-      SecurityError: 'Kamera erişimi güvenlik nedeniyle engellendi (HTTPS gerekli).'
-    };
-    showMessage(map[err.name] || ('Kamera hatası: ' + err.message), 'error');
+    showMessage('Kamera hatası: ' + err.message, 'error');
   }
 }
 
@@ -137,7 +123,7 @@ function scheduleScan() {
   if (!running) return;
   scanTimer = setTimeout(async () => {
     const video = $('video');
-    if (video.readyState >= 2 && detector) {
+    if (video && video.readyState >= 2 && detector) {
       try {
         const codes = await detector.detect(video);
         if (codes && codes.length > 0) handleBarcode(codes[0].rawValue);
@@ -151,23 +137,31 @@ function stopCamera() {
   running = false;
   if (scanTimer) { clearTimeout(scanTimer); scanTimer = null; }
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-  $('video').srcObject = null;
-  $('camPlaceholder').style.display = '';
-  $('btnStart').disabled = false;
-  $('btnStop').disabled = true;
+  const video = $('video');
+  if(video) video.srcObject = null;
+  if($('camPlaceholder')) $('camPlaceholder').style.display = '';
+  if($('btnStart')) $('btnStart').disabled = false;
+  if($('btnStop')) $('btnStop').disabled = true;
 }
 
 /* ============================================================
    6) BARKOD İŞLEME
    ============================================================ */
 function handleBarcode(code) {
-  if (!shouldProcess(code)) return;
-  const product = findProduct(code);
-  if (!product) {
-    showMessage('Ürün bulunamadı.', 'error');
-    if (mode === 'single') $('singleResult').innerHTML = '';
+  if (!isLoaded) {
+    showMessage('Ürün listesi henüz yüklenmedi. Lütfen bekleyin...', 'error');
     return;
   }
+  if (!shouldProcess(code)) return;
+  
+  const product = findProduct(code);
+
+  if (!product) {
+    showMessage('Ürün bulunamadı. (Girilen: ' + code + ')', 'error');
+    if (mode === 'single' && $('singleResult')) $('singleResult').innerHTML = '';
+    return;
+  }
+  
   if (mode === 'single') {
     renderSingle(product);
     showMessage('Ürün bulundu: ' + product.name, 'info');
@@ -177,6 +171,7 @@ function handleBarcode(code) {
 }
 
 function renderSingle(p) {
+  if(!$('singleResult')) return;
   $('singleResult').innerHTML = `
     <div class="card">
       <h3>📦 ${p.name}</h3>
@@ -198,18 +193,17 @@ function addToCart(p) {
 }
 
 function renderCart() {
+  if(!$('cartList')) return;
   const list = $('cartList');
   const empty = $('cartEmpty');
   list.innerHTML = '';
-
   if (cart.length === 0) {
-    empty.style.display = 'block';
-    $('cartTotal').textContent = formatPrice(0);
-    $('cartBadge').textContent = '0';
+    if(empty) empty.style.display = 'block';
+    if($('cartTotal')) $('cartTotal').textContent = formatPrice(0);
+    if($('cartBadge')) $('cartBadge').textContent = '0';
     return;
   }
-  empty.style.display = 'none';
-
+  if(empty) empty.style.display = 'none';
   let total = 0;
   let count = 0;
   cart.forEach(item => {
@@ -225,58 +219,65 @@ function renderCart() {
       <div class="price">${formatPrice(line)}</div>`;
     list.appendChild(li);
   });
-  $('cartTotal').textContent = formatPrice(total);
-  $('cartBadge').textContent = count;
+  if($('cartTotal')) $('cartTotal').textContent = formatPrice(total);
+  if($('cartBadge')) $('cartBadge').textContent = count;
 }
 
 /* ============================================================
-   7) MOD DEĞİŞTİRME VE OLAYLAR
+   7) MOD DEĞİŞTİRME
    ============================================================ */
 function setMode(m) {
   mode = m;
-  $('tabSingle').classList.toggle('active', m === 'single');
-  $('tabCart').classList.toggle('active', m === 'cart');
-  $('panelSingle').classList.toggle('active', m === 'single');
-  $('panelCart').classList.toggle('active', m === 'cart');
+  if($('tabSingle')) $('tabSingle').classList.toggle('active', m === 'single');
+  if($('tabCart')) $('tabCart').classList.toggle('active', m === 'cart');
+  if($('panelSingle')) $('panelSingle').classList.toggle('active', m === 'single');
+  if($('panelCart')) $('panelCart').classList.toggle('active', m === 'cart');
   lastScan.code = null; lastScan.time = 0;
-  $('message').className = 'message';
 }
-$('tabSingle').addEventListener('click', () => setMode('single'));
-$('tabCart').addEventListener('click', () => setMode('cart'));
-
-$('btnManual').addEventListener('click', () => {
-  const code = $('manualInput').value.trim();
-  if (!code) { showMessage('Lütfen barkod girin.', 'error'); return; }
-  handleBarcode(code);
-  $('manualInput').value = '';
-});
-$('manualInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btnManual').click(); });
-
-$('btnStart').addEventListener('click', startCamera);
-$('btnStop').addEventListener('click', stopCamera);
-$('btnClearCart').addEventListener('click', () => {
-  if (cart.length === 0) return;
-  if (confirm('Sepeti temizlemek istediğinize emin misiniz?')) {
-    cart = [];
-    saveCart();
-    renderCart();
-    showMessage('Sepet temizlendi.', 'info');
-  }
-});
+if($('tabSingle')) $('tabSingle').addEventListener('click', () => setMode('single'));
+if($('tabCart')) $('tabCart').addEventListener('click', () => setMode('cart'));
 
 /* ============================================================
-   8) PWA / SW KAYDI VE ÖNBELLEK TEMİZLİĞİ
+   8) ELLE GİRİŞ
+   ============================================================ */
+if($('btnManual')) {
+  $('btnManual').addEventListener('click', () => {
+    const code = $('manualInput').value.trim();
+    if (!code) { showMessage('Lütfen barkod girin.', 'error'); return; }
+    handleBarcode(code);
+    $('manualInput').value = '';
+  });
+}
+if($('manualInput')) {
+  $('manualInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && $('btnManual')) $('btnManual').click(); });
+}
+
+/* ============================================================
+   9) KONTROLLER
+   ============================================================ */
+if($('btnStart')) $('btnStart').addEventListener('click', startCamera);
+if($('btnStop')) $('btnStop').addEventListener('click', stopCamera);
+if($('btnClearCart')) {
+  $('btnClearCart').addEventListener('click', () => {
+    if (cart.length === 0) return;
+    if (confirm('Sepeti temizlemek istediğinize emin misiniz?')) {
+      cart = [];
+      saveCart();
+      renderCart();
+      showMessage('Sepet temizlendi.', 'info');
+    }
+  });
+}
+
+/* ============================================================
+   10) SERVICE WORKER'I SIFIRLA
    ============================================================ */
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(function(registrations) {
     for(let registration of registrations) {
-      registration.unregister(); // Eski önbelleği zorla sil
+      registration.unregister();
     } 
   });
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW:', err));
-  });
 }
-
 window.addEventListener('pagehide', stopCamera);
 renderCart();
