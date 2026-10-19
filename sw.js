@@ -1,11 +1,11 @@
-const CACHE_NAME = 'market-pwa-v100'; // En güncel sürüm numarası
+const CACHE_NAME = 'market-pwa-v101'; 
 
 const PRECACHE_ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
-  './urunler.json', // <--- KRİTİK EKLEME: JSON dosyası da önbelleğe alınıyor
+  './urunler.json', 
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'
