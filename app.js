@@ -10,7 +10,7 @@ async function loadProducts() {
     if (!response.ok) throw new Error("JSON dosyası okunamadı.");
     PRODUCTS = await response.json();
     isLoaded = true;
-    console.log("✅ Ürünler yüklendi:", PRODUCTS);
+    console.log("✅ Ürünler urunler.json'dan başarıyla yüklendi:", PRODUCTS);
   } catch (error) {
     console.error("❌ JSON Yükleme Hatası:", error);
     showMessage('Ürün listesi yüklenemedi! (Sunucu kullanmalısınız)', 'error');
@@ -30,7 +30,6 @@ const findProduct = (code) => {
   
   return PRODUCTS.find(p => {
     const pCode = String(p.barcode).replace(/\D/g, '');
-    // Tam eşleşme veya içinde geçme durumunda bul
     return pCode === cleanCode || pCode.includes(cleanCode) || cleanCode.includes(pCode);
   });
 };
@@ -65,6 +64,8 @@ let stream = null;
 let detector = null;
 let scanTimer = null;
 let running = false;
+let videoTrack = null; // Flaş için eklendi
+let isFlashOn = false; // Flaş durumu
 
 /* ============================================================
    4) SEPET KALICILIĞI
@@ -80,7 +81,7 @@ function loadCart() {
 }
 
 /* ============================================================
-   5) KAMERA + BARKOD
+   5) KAMERA + BARKOD + FLAŞ
    ============================================================ */
 async function startCamera() {
   if (running) return;
@@ -101,6 +102,11 @@ async function startCamera() {
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false
     });
+
+    // --- FLAŞ İÇİN KAMERA İZİNİ ALINDI ---
+    videoTrack = stream.getVideoTracks()[0];
+    if($('btnFlash')) $('btnFlash').disabled = false;
+
     const video = $('video');
     video.srcObject = stream;
     await video.play();
@@ -134,11 +140,55 @@ function stopCamera() {
   running = false;
   if (scanTimer) { clearTimeout(scanTimer); scanTimer = null; }
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  
+  // FLAŞ SIFIRLAMA
+  videoTrack = null;
+  isFlashOn = false;
+  if($('btnFlash')) {
+    $('btnFlash').disabled = true;
+    $('btnFlash').textContent = '🔦 Flaş Aç';
+    $('btnFlash').classList.add('secondary');
+    $('btnFlash').style.background = '';
+    $('btnFlash').style.color = '';
+  }
+
   const video = $('video');
   if(video) video.srcObject = null;
   if($('camPlaceholder')) $('camPlaceholder').style.display = '';
   if($('btnStart')) $('btnStart').disabled = false;
   if($('btnStop')) $('btnStop').disabled = true;
+}
+
+/* ============================================================
+   FLAŞI AÇ / KAPAT
+   ============================================================ */
+async function toggleFlash() {
+  if (!videoTrack) {
+    showMessage('Kamera açık değil.', 'error');
+    return;
+  }
+  try {
+    isFlashOn = !isFlashOn;
+    await videoTrack.applyConstraints({
+      advanced: [{ torch: isFlashOn }]
+    });
+    
+    if (isFlashOn) {
+      $('btnFlash').textContent = '🔦 Flaş Kapat';
+      $('btnFlash').classList.remove('secondary');
+      $('btnFlash').style.background = '#fbbc04';
+      $('btnFlash').style.color = '#000';
+    } else {
+      $('btnFlash').textContent = '🔦 Flaş Aç';
+      $('btnFlash').classList.add('secondary');
+      $('btnFlash').style.background = '';
+      $('btnFlash').style.color = '';
+    }
+  } catch (err) {
+    console.error("Flaş hatası:", err);
+    showMessage('Cihaz flaşı desteklemiyor veya izin vermedi.', 'error');
+    isFlashOn = false;
+  }
 }
 
 /* ============================================================
@@ -248,6 +298,8 @@ if($('manualInput')) {
 
 if($('btnStart')) $('btnStart').addEventListener('click', startCamera);
 if($('btnStop')) $('btnStop').addEventListener('click', stopCamera);
+if($('btnFlash')) $('btnFlash').addEventListener('click', toggleFlash); // Flaş butonu dinleyicisi
+
 if($('btnClearCart')) {
   $('btnClearCart').addEventListener('click', () => {
     if (cart.length === 0) return;
