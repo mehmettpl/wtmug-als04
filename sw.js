@@ -1,14 +1,11 @@
-/* ============================================================
-   Market Barkod Okuyucu — Service Worker
-   ============================================================ */
-
-const CACHE_NAME = 'market-pwa-v3';
+const CACHE_NAME = 'market-pwa-v4'; // Versiyonu artırdık, eski önbellek silinecek
 
 const PRECACHE_ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
+  './urunler.json', // <-- BU SATIRI EKLEDİK
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'
